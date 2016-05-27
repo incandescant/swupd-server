@@ -529,7 +529,7 @@ static GList *get_unique_includes(struct manifest *manifest)
 	gpointer k, v;
 
 	l1 = g_list_first(manifest->includes);
-	while (l1) {
+	while (l1 && l1->data) {
 		struct manifest *m = l1->data;
 		l1 = g_list_next(l1);
 		(void)g_hash_table_replace(unique_includes, m->component, m);
@@ -927,7 +927,7 @@ bool manifest_includes(struct manifest *manifest, char *component)
 {
 	GList *includes = g_list_first(manifest->includes);
 
-	while (includes) {
+	while (includes && includes->data) {
 		if (strcmp(((struct manifest *)includes->data)->component,
 			   component) == 0) {
 			return true;
