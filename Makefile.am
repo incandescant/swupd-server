@@ -13,6 +13,7 @@ bin_PROGRAMS = \
 
 swupd_create_update_SOURCES = \
 	src/analyze_fs.c \
+	src/archive_tar.c \
 	src/chroot.c \
 	src/config.c \
 	src/create_update.c \
@@ -34,6 +35,7 @@ swupd_create_update_SOURCES = \
 
 swupd_make_pack_SOURCES = \
 	src/analyze_fs.c \
+	src/archive_tar.c \
 	src/config.c \
 	src/delta.c \
 	src/globals.c \
@@ -49,6 +51,7 @@ swupd_make_pack_SOURCES = \
 
 swupd_make_fullfiles_SOURCES = \
 	src/analyze_fs.c \
+	src/archive_tar.c \
 	src/config.c \
 	src/delta.c \
 	src/fullfiles.c \

@@ -260,4 +260,15 @@ extern bool signature_initialize(void);
 extern void signature_terminate(void);
 extern bool signature_sign(const char *filename);
 
+extern int inflate_manifest (char *manifestdir, char *manifestpath);
+extern int inflate_pack (char *packdir, char *packpath);
+extern int archive_pack (char *packdir, char *packpath, char *bundle_delta, char *mom_delta);
+extern int compress_sign_manifest (char *manifestdir, char *manifestout, char *manifestfile, char *signedout);
+extern int compress_manifest (char *manifestdir, char *manifestout, char *manifestfile);
+extern int compress_fullfile_dir(char *fullfiledir, char *fullfileout, char *fullfile);
+extern int compress_fullfile_xz (char *fullfiledir, char *fullfileout, char *fullfile);
+extern int compress_fullfile_gz (char *fullfiledir, char *fullfileout, char *fullfile);
+extern int compress_fullfile_bz (char *fullfiledir, char *fullfileout, char *fullfile);
+extern int copy_dir_with_attr (char *src, char *copydir, char *dest);
+
 #endif

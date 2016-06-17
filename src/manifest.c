@@ -802,8 +802,7 @@ static int write_manifest_plain(struct manifest *manifest)
 		 * the files. */
 		string_or_die(&param1, "%s", manifest_tempdir);
 		string_or_die(&param2, "%s.tar", submanifest_filename);
-		char *const tarcmd[] = { TAR_COMMAND, "-C", param1, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", param2, NULL };
-		ret = system_argv(tarcmd);
+		ret = inflate_manifest(param1, param2);
 		free(param1);
 		free(param2);
 
@@ -860,13 +859,9 @@ static int write_manifest_tar(struct manifest *manifest)
 	/* now, tar the thing up for efficient full file download */
 	/* and put the signature of the plain manifest into the archive, too */
 	if (enable_signing) {
-		char *const tarcmd[] = { TAR_COMMAND, "-C", directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
-					 manifesttar, manifestcomp, manifestsigned, NULL };
-		ret = system_argv(tarcmd);
+		ret = compress_sign_manifest(directory, manifesttar, manifestcomp, manifestsigned);
 	} else {
-		char *const tarcmd[] = { TAR_COMMAND, "-C", directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
-					 manifesttar, manifestcomp, NULL };
-		ret = system_argv(tarcmd);
+		ret = compress_manifest(directory, manifesttar, manifestcomp);
 	}
 	if (ret) {
 		fprintf(stderr, "Creation of Manifest.tar failed\n");

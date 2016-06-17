@@ -49,8 +49,7 @@ static void create_fullfile(struct file *file)
 	int ret;
 	struct stat sbuf;
 	char *empty, *indir, *outdir;
-	char *param1, *param2;
-	int stderrfd;
+	char *param1;
 
 	if (file->is_deleted) {
 		return; /* file got deleted -> by definition we cannot tar it up */
@@ -93,22 +92,9 @@ static void create_fullfile(struct file *file)
 			assert(0);
 		}
 
-		string_or_die(&param1, "--exclude=%s/?*", base);
-		string_or_die(&param2, "./%s", base);
-		char *const tarcfcmd[] = { TAR_COMMAND, "-C", dir, TAR_PERM_ATTR_ARGS_STRLIST, "-cf", "-", param1, param2, NULL };
-		char *const tarxfcmd[] = { TAR_COMMAND, "-C", rename_tmpdir, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", "-", NULL };
-
-		stderrfd = open("/dev/null", O_WRONLY);
-		if (stderrfd == -1) {
-			LOG(NULL, "Failed to open /dev/null", "");
+		if (copy_dir_with_attr(dir, base, rename_tmpdir) != 0) {
 			assert(0);
 		}
-		if (system_argv_pipe(tarcfcmd, -1, stderrfd, tarxfcmd, -1, stderrfd) != 0) {
-			assert(0);
-		}
-		free(param1);
-		free(param2);
-		close(stderrfd);
 
 		string_or_die(&rename_source, "%s/%s", rename_tmpdir, base);
 		string_or_die(&rename_target, "%s/%s", rename_tmpdir, file->hash);
@@ -120,9 +106,7 @@ static void create_fullfile(struct file *file)
 
 		/* for a directory file, tar up simply with gzip */
 		string_or_die(&param1, "%s/%i/files/%s.tar", outdir, file->last_change, file->hash);
-		char *const tarcmd[] = { TAR_COMMAND, "-C", rename_tmpdir, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", param1, file->hash, NULL };
-
-		if (system_argv(tarcmd) != 0) {
+		if (compress_fullfile_dir(rename_tmpdir, param1, file->hash) != 0) {
 			assert(0);
 		}
 		free(param1);
@@ -156,27 +140,21 @@ static void create_fullfile(struct file *file)
 		/* step 2a: tar it with each compression type  */
 		// lzma
 		string_or_die(&param1, "%s/%i/files/%s.tar.xz", outdir, file->last_change, file->hash);
-		char *const tarlzmacmd[] = { TAR_COMMAND, "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf", param1, file->hash, NULL };
-
-		if (system_argv(tarlzmacmd) != 0) {
+		if (compress_fullfile_xz(empty, param1, file->hash) != 0) {
 			assert(0);
 		}
 		free(param1);
 
 		// gzip
 		string_or_die(&param1, "%s/%i/files/%s.tar.gz", outdir, file->last_change, file->hash);
-		char *const targzipcmd[] = { TAR_COMMAND,  "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", param1, file->hash, NULL };
-
-		if (system_argv(targzipcmd) != 0) {
+		if (compress_fullfile_gz(empty, param1, file->hash) != 0) {
 			assert(0);
 		}
 		free(param1);
 
 #ifdef SWUPD_WITH_BZIP2
 		string_or_die(&param1, "%s/%i/files/%s.tar.bz2", outdir, file->last_change, file->hash);
-		char *const tarbzip2cmd[] = { TAR_COMMAND, "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-jcf", param1, file->hash, NULL };
-
-		if (system_argv(tarbzip2cmd) != 0) {
+		if (compress_fullfile_bz(empty, param1, file->hash) != 0) {
 			assert(0);
 		}
 		free(param1);
