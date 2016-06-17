@@ -16,26 +16,6 @@
 
 #define SWUPD_SERVER_STATE_DIR "/var/lib/update"
 
-#if SWUPD_WITH_BSDTAR
-#define TAR_COMMAND "bsdtar"
-#define TAR_XATTR_ARGS ""
-#define TAR_XATTR_ARGS_STRLIST
-#define TAR_WARN_ARGS ""
-#else
-#define TAR_COMMAND "tar"
-#define TAR_XATTR_ARGS "--xattrs --xattrs-include='*'"
-#define TAR_XATTR_ARGS_STRLIST "--xattrs", "--xattrs-include='*'",
-#define TAR_WARN_ARGS "--warning=no-timestamp"
-#endif
-
-#if SWUPD_WITH_SELINUX
-#define TAR_PERM_ATTR_ARGS "--preserve-permissions --selinux " TAR_XATTR_ARGS
-#define TAR_PERM_ATTR_ARGS_STRLIST TAR_XATTR_ARGS_STRLIST "--preserve-permissions", "--selinux"
-#else
-#define TAR_PERM_ATTR_ARGS "--preserve-permissions " TAR_XATTR_ARGS
-#define TAR_PERM_ATTR_ARGS_STRLIST TAR_XATTR_ARGS_STRLIST "--preserve-permissions"
-#endif
-
 #if SWUPD_WITH_STATELESS
 #define OS_IS_STATELESS 1
 #else
