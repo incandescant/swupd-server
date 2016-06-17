@@ -155,37 +155,31 @@ static void create_fullfile(struct file *file)
 
 		/* step 2a: tar it with each compression type  */
 		// lzma
-		string_or_die(&param1, "--directory=%s", empty);
-		string_or_die(&param2, "%s/%i/files/%s.tar.xz", outdir, file->last_change, file->hash);
-		char *const tarlzmacmd[] = { TAR_COMMAND, param1, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf", param2, file->hash, NULL };
+		string_or_die(&param1, "%s/%i/files/%s.tar.xz", outdir, file->last_change, file->hash);
+		char *const tarlzmacmd[] = { TAR_COMMAND, "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf", param1, file->hash, NULL };
 
 		if (system_argv(tarlzmacmd) != 0) {
 			assert(0);
 		}
 		free(param1);
-		free(param2);
 
 		// gzip
-		string_or_die(&param1, "--directory=%s", empty);
-		string_or_die(&param2, "%s/%i/files/%s.tar.gz", outdir, file->last_change, file->hash);
-		char *const targzipcmd[] = { TAR_COMMAND, param1, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", param2, file->hash, NULL };
+		string_or_die(&param1, "%s/%i/files/%s.tar.gz", outdir, file->last_change, file->hash);
+		char *const targzipcmd[] = { TAR_COMMAND,  "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", param1, file->hash, NULL };
 
 		if (system_argv(targzipcmd) != 0) {
 			assert(0);
 		}
 		free(param1);
-		free(param2);
 
 #ifdef SWUPD_WITH_BZIP2
-		string_or_die(&param1, "--directory=%s", empty);
-		string_or_die(&param2, "%s/%i/files/%s.tar.bz2", outdir, file->last_change, file->hash);
-		char *const tarbzip2cmd[] = { TAR_COMMAND, param1, TAR_PERM_ATTR_ARGS_STRLIST, "-jcf", param2, file->hash, NULL };
+		string_or_die(&param1, "%s/%i/files/%s.tar.bz2", outdir, file->last_change, file->hash);
+		char *const tarbzip2cmd[] = { TAR_COMMAND, "-C", empty, TAR_PERM_ATTR_ARGS_STRLIST, "-jcf", param1, file->hash, NULL };
 
 		if (system_argv(tarbzip2cmd) != 0) {
 			assert(0);
 		}
 		free(param1);
-		free(param2);
 
 #endif
 

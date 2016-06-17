@@ -852,7 +852,7 @@ static int write_manifest_tar(struct manifest *manifest)
 		assert(0);
 	}
 
-	string_or_die(&directory, "--directory=%s/%i", conf, manifest->version);
+	string_or_die(&directory, "%s/%i", conf, manifest->version);
 	string_or_die(&manifesttar, "%s/%i/Manifest.%s.tar", conf, manifest->version, manifest->component);
 	string_or_die(&manifestcomp, "Manifest.%s", manifest->component);
 	string_or_die(&manifestsigned, "Manifest.%s.signed", manifest->component);
@@ -860,11 +860,11 @@ static int write_manifest_tar(struct manifest *manifest)
 	/* now, tar the thing up for efficient full file download */
 	/* and put the signature of the plain manifest into the archive, too */
 	if (enable_signing) {
-		char *const tarcmd[] = { TAR_COMMAND, directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
+		char *const tarcmd[] = { TAR_COMMAND, "-C", directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
 					 manifesttar, manifestcomp, manifestsigned, NULL };
 		ret = system_argv(tarcmd);
 	} else {
-		char *const tarcmd[] = { TAR_COMMAND, directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
+		char *const tarcmd[] = { TAR_COMMAND, "-C", directory, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
 					 manifesttar, manifestcomp, NULL };
 		ret = system_argv(tarcmd);
 	}
