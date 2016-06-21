@@ -21,6 +21,18 @@ AC_ARG_ENABLE([bzip2],
 
 AC_ARG_ENABLE([lzma],
 	      [AS_HELP_STRING([--disable-lzma],[Do not use lzma compression (uses lzma by default)])])
+
+have_libarchive=no
+AC_ARG_ENABLE(libarchive, AS_HELP_STRING([--enable-libarchive], [use libarchive for tar operations]))
+if test "$enable_libarchive" = "yes" ; then
+	PKG_CHECK_MODULES([libarchive], [libarchive])
+	AC_DEFINE([SWUPD_WITH_LIBARCHIVE],1,[Use libarchive for compression])
+	have_libarchive=yes
+else
+	AC_DEFINE([SWUPD_WITH_LIBARCHIVE],0,[Use tar for compression])
+fi
+AM_CONDITIONAL([LIBARCHIVE],[test "$have_libarchive" = "yes"])
+
 AC_ARG_ENABLE(
     [stateless],
     AS_HELP_STRING([--disable-stateless],[OS is not stateless, do not ignore configuration files (stateless by default)]),

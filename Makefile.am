@@ -13,7 +13,6 @@ bin_PROGRAMS = \
 
 swupd_create_update_SOURCES = \
 	src/analyze_fs.c \
-	src/archive_tar.c \
 	src/chroot.c \
 	src/config.c \
 	src/create_update.c \
@@ -33,9 +32,14 @@ swupd_create_update_SOURCES = \
 	src/versions.c \
 	src/xattrs.c
 
+if LIBARCHIVE
+swupd_create_update_SOURCES += src/libarchive.c
+else
+swupd_create_update_SOURCES += src/tararchive.c
+endif
+
 swupd_make_pack_SOURCES = \
 	src/analyze_fs.c \
-	src/archive_tar.c \
 	src/config.c \
 	src/delta.c \
 	src/globals.c \
@@ -49,9 +53,14 @@ swupd_make_pack_SOURCES = \
 	src/stats.c \
 	src/xattrs.c
 
+if LIBARCHIVE
+swupd_make_pack_SOURCES += src/libarchive.c
+else
+swupd_make_pack_SOURCES += src/tararchive.c
+endif
+
 swupd_make_fullfiles_SOURCES = \
 	src/analyze_fs.c \
-	src/archive_tar.c \
 	src/config.c \
 	src/delta.c \
 	src/fullfiles.c \
@@ -66,25 +75,34 @@ swupd_make_fullfiles_SOURCES = \
 	src/stats.c \
 	src/xattrs.c
 
+if LIBARCHIVE
+swupd_make_fullfiles_SOURCES += src/libarchive.c
+else
+swupd_make_fullfiles_SOURCES += src/tararchive.c
+endif
+
 AM_CPPFLAGS = $(glib_CFLAGS) -I$(top_srcdir)/include
 
 swupd_create_update_LDADD = \
 	$(glib_LIBS) \
 	$(zlib_LIBS) \
 	$(openssl_LIBS) \
-	$(bsdiff_LIBS)
+	$(bsdiff_LIBS) \
+	$(libarchive_LIBS)
 
 swupd_make_pack_LDADD = \
 	$(glib_LIBS) \
 	$(zlib_LIBS) \
 	$(openssl_LIBS) \
-	$(bsdiff_LIBS)
+	$(bsdiff_LIBS) \
+	$(libarchive_LIBS)
 
 swupd_make_fullfiles_LDADD = \
 	$(glib_LIBS) \
 	$(zlib_LIBS) \
 	$(openssl_LIBS) \
-	$(bsdiff_LIBS)
+	$(bsdiff_LIBS) \
+	$(libarchive_LIBS)
 
 if ENABLE_LZMA
 swupd_create_update_LDADD += \
