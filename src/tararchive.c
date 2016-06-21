@@ -52,9 +52,9 @@
 #define TAR_PERM_ATTR_ARGS_STRLIST TAR_XATTR_ARGS_STRLIST "--preserve-permissions"
 #endif
 
-int inflate_manifest (char *manifestdir, char *manifespath)
+int inflate_manifest (char *manifestdir, char *manifestpath)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", manifestdir, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", manifespath, NULL };
+	char *const tarcmd[] = { TAR_COMMAND, "-C", manifestdir, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", manifestpath, NULL };
 	return system_argv(tarcmd);
 }
 
