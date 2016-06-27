@@ -18,6 +18,9 @@
  *   Authors:
  *         Joshua Lock <joshua.g.lock@intel.com>
  *
+ * NOTE: it's not possible to support GNU tar generated update artefacts with
+ * the libarchive backend:
+ * http://comments.gmane.org/gmane.comp.gnu.tar.bugs/5443
  */
 
 #define _GNU_SOURCE
@@ -77,7 +80,7 @@ int copy_archive_data(struct archive *ar, struct archive *aw)
 	}
 }
 
-int inflate_manifest (char *manifestdir, char *manifestpath)
+int inflate_archive (char *inflatepath, char *archivepath, int inflateflags)
 {
 	int ret = -1;
 	int err = -1;
@@ -85,30 +88,22 @@ int inflate_manifest (char *manifestdir, char *manifestpath)
 	struct archive *a;
 	struct archive *ext;
 	struct archive_entry *entry;
-	int flags;
 
 	cwd = getcwd(NULL, 0);
-	ret = chdir(manifestdir);
+	ret = chdir(inflatepath);
 	if (ret != 0) {
 		goto error;
 	}
-
-	flags = ARCHIVE_EXTRACT_TIME;
-	flags |= ARCHIVE_EXTRACT_PERM;
-	flags |= ARCHIVE_EXTRACT_ACL;
-	flags |= ARCHIVE_EXTRACT_OWNER;
-	flags |= ARCHIVE_EXTRACT_PERM;
-	flags |= ARCHIVE_EXTRACT_XATTR;
 
 	a = archive_read_new();
 	archive_read_support_format_all(a);
 	archive_read_support_filter_all(a);
 	ext = archive_write_disk_new();
-	archive_write_disk_set_options(ext, flags);
+	archive_write_disk_set_options(ext, inflateflags);
 
-	ret = archive_read_open_filename(a, manifestpath, 10240);
+	ret = archive_read_open_filename(a, archivepath, 10240);
 	if (ret != ARCHIVE_OK) {
-		printf("Failed to open manifest archive: %s", manifestpath);
+		printf("Failed to open manifest archive: %s", archivepath);
 		goto fail;
 	}
 	while (1) {
@@ -152,10 +147,25 @@ error:
 	return ret;
 }
 
+int inflate_manifest (char *manifestdir, char *manifestpath)
+{
+	int flags = ARCHIVE_EXTRACT_TIME;
+	flags |= ARCHIVE_EXTRACT_PERM;
+	flags |= ARCHIVE_EXTRACT_ACL;
+	flags |= ARCHIVE_EXTRACT_OWNER;
+	flags |= ARCHIVE_EXTRACT_XATTR;
+
+	return inflate_archive(manifestdir, manifestpath, flags);
+}
+
 int inflate_pack (char *packdir, char *packpath)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", packdir, TAR_WARN_ARGS, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", packpath, NULL };
-	return system_argv(tarcmd);
+	int flags = ARCHIVE_EXTRACT_PERM;
+	flags |= ARCHIVE_EXTRACT_ACL;
+	flags |= ARCHIVE_EXTRACT_OWNER;
+	flags |= ARCHIVE_EXTRACT_XATTR;
+
+	return inflate_archive(packdir, packpath, flags);
 }
 
 int archive_pack (char *packdir, char *packout, char *bundle_delta, char *mom_delta)
