@@ -301,18 +301,18 @@ int copy_dir_with_attr (char *src, char *copydir, char *dest)
 
 	string_or_die(&tgt, "%s/%s", src, copydir);
 	ret = stat(tgt, &sb);
-	if (ret != 0) {
+	if (ret == -1) {
 		printf("Error reading directory attributes from %s\n", tgt);
 		goto error;
 	}
 
 	ret = mkdir(dest, sb.st_mode);
-	if (ret != 0) {
+	if (ret == -1) {
 		printf("Error making directory %s\n", dest);
 		goto error;
 	}
 	ret = chown(dest, sb.st_uid, sb.st_gid);
-	if (ret != 0) {
+	if (ret == -1) {
 		printf("Error setting permissions of directory %s\n", dest);
 		goto error;
 	}
