@@ -57,6 +57,12 @@
 #define TAR_PERM_ATTR_ARGS_STRLIST TAR_XATTR_ARGS_STRLIST "--preserve-permissions"
 #endif
 
+typedef enum libarchive_filter_type {
+	LIBARCHIVE_FILTER_BZ,
+	LIBARCHIVE_FILTER_GZ,
+	LIBARCHIVE_FILTER_XZ
+} libarchive_filter_type;
+
 int copy_archive_data(struct archive *ar, struct archive *aw)
 {
 	int ret;
@@ -147,6 +153,95 @@ error:
 	return ret;
 }
 
+int create_archive(char *archivedir, char *archivename, libarchive_filter_type filter, char *const contents[])
+{
+	int ret;
+	int err;
+	int fd;
+	size_t len;
+	char buff[8192];
+	char *cwd = NULL;
+	struct archive *a;
+	struct archive_entry *entry;
+
+	cwd = getcwd(NULL, 0);
+	ret = chdir(archivedir);
+	if (ret != 0) {
+		goto error;
+	}
+
+	a = archive_write_new();
+	switch (filter) {
+		case LIBARCHIVE_FILTER_BZ:
+			ret = archive_write_add_filter_bzip2(a);
+		break;
+		case LIBARCHIVE_FILTER_XZ:
+			ret = archive_write_add_filter_xz(a);
+		break;
+		case LIBARCHIVE_FILTER_GZ:
+		default:
+			ret = archive_write_add_filter_gzip(a);
+	}
+	if (ret != ARCHIVE_OK) {
+		printf("Failed to set archive compression filter: %s\n", archive_error_string(a));
+		goto fail;
+	}
+	ret = archive_write_set_format_pax(a);
+	if (ret != ARCHIVE_OK) {
+		printf("Failed to set archive write format: %s\n", archive_error_string(a));
+		goto fail;
+	}
+	ret = archive_write_open_filename(a, archivename);
+	if (ret != ARCHIVE_OK) {
+		printf("Failed to open file for writing(%s): %s\n", archivename,
+			archive_error_string(a));
+		goto fail;
+	}
+
+	while (*contents) {
+		entry = archive_entry_new();
+		archive_entry_set_pathname(entry, *contents);
+		// TODO: set uid/gid lookup appropriately to preserve numeric uid and gid
+		ret = archive_read_disk_entry_from_file(a, entry, -1, NULL);
+		if (ret != ARCHIVE_OK) {
+			printf("Failed to read entry info from file(%s): %s\n", *contents, archive_error_string(a));
+			goto next;
+		}
+
+		ret = archive_write_header(a, entry);
+		if (ret != ARCHIVE_OK) {
+			printf("Failed to update archive: %s\n", archive_error_string(a));
+			goto next;
+		}
+		fd = open(*contents, O_RDONLY);
+		if (fd == -1) {
+			printf("Failed to copy contents of %s into archive\n", *contents);
+			goto next;
+		}
+		len = read(fd, buff, sizeof(buff));
+		while (len > 0) {
+			archive_write_data(a, buff, len);
+			len = read(fd, buff, sizeof(buff));
+		}
+		close(fd);
+	next:
+		archive_entry_clear(entry);
+		contents++;
+	}
+
+fail:
+	archive_write_close(a);
+	archive_write_free(a);
+error:
+	err = chdir(cwd);
+	if (err != 0) {
+		printf("Failed to restore cwd to %s\n", cwd);
+	}
+	free(cwd);
+
+	return ret;
+}
+
 int inflate_manifest (char *manifestdir, char *manifestpath)
 {
 	int flags = ARCHIVE_EXTRACT_TIME;
@@ -170,46 +265,44 @@ int inflate_pack (char *packdir, char *packpath)
 
 int archive_pack (char *packdir, char *packout, char *bundle_delta, char *mom_delta)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", packdir, TAR_PERM_ATTR_ARGS_STRLIST, "--numeric-owner", "-Jcf", packout, "delta", "staged", bundle_delta, mom_delta, NULL };
-	return system_argv(tarcmd);
+	char *const contents[] = { "delta", "staged", bundle_delta, mom_delta, NULL };
+	return create_archive(packdir, packout, LIBARCHIVE_FILTER_XZ, contents);
 }
 
 int compress_sign_manifest (char *manifestdir, char *manifestout, char *manifestfile, char *signedout)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", manifestdir, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
-				 manifestout, manifestfile, signedout, NULL };
-	return system_argv(tarcmd);
+	char *const contents[] = { manifestfile, signedout, NULL };
+	return create_archive(manifestdir, manifestout, LIBARCHIVE_FILTER_XZ, contents);
 }
 
 int compress_manifest (char *manifestdir, char *manifestout, char *manifestfile)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", manifestdir, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf",
-				 manifestout, manifestfile, NULL };
-	return system_argv(tarcmd);
+	char *const contents[] = { manifestfile, NULL };
+	return create_archive(manifestdir, manifestout, LIBARCHIVE_FILTER_XZ, contents);
 }
 
 int compress_fullfile_dir (char *fullfiledir, char *fullfileout, char *fullfile)
 {
-	char *const tarcmd[] = { TAR_COMMAND, "-C", fullfiledir, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", fullfileout, fullfile, NULL };
-	return system_argv(tarcmd);
+	char *const contents[] = { fullfile, NULL };
+	return create_archive(fullfiledir, fullfileout, LIBARCHIVE_FILTER_GZ,  contents);
 }
 
 int compress_fullfile_xz (char *fullfiledir, char *fullfileout, char *fullfile)
 {
-	char *const tarlzmacmd[] = { TAR_COMMAND, "-C", fullfiledir, TAR_PERM_ATTR_ARGS_STRLIST, "-Jcf", fullfileout, fullfile, NULL };
-	return system_argv(tarlzmacmd);
+	char *const contents[] = { fullfile, NULL };
+	return create_archive(fullfiledir, fullfileout, LIBARCHIVE_FILTER_XZ,  contents);
 }
 
 int compress_fullfile_gz (char *fullfiledir, char *fullfileout, char *fullfile)
 {
-	char *const targzipcmd[] = { TAR_COMMAND, "-C", fullfiledir, TAR_PERM_ATTR_ARGS_STRLIST, "-zcf", fullfileout, fullfile, NULL };
-	return system_argv(targzipcmd);
+	char *const contents[] = { fullfile, NULL };
+	return create_archive(fullfiledir, fullfileout, LIBARCHIVE_FILTER_GZ,  contents);
 }
 
 int compress_fullfile_bz (char *fullfiledir, char *fullfileout, char *fullfile)
 {
-	char *const tarbzip2cmd[] = { TAR_COMMAND, "-C", fullfiledir, TAR_PERM_ATTR_ARGS_STRLIST, "-jcf", fullfileout, fullfile, NULL };
-	return system_argv(tarbzip2cmd);
+	char *const contents[] = { fullfile, NULL };
+	return create_archive(fullfiledir, fullfileout, LIBARCHIVE_FILTER_BZ,  contents);
 }
 
 int copy_dir_with_attr (char *src, char *copydir, char *dest)
