@@ -31,6 +31,8 @@
 #include <sys/types.h>
 
 
+#include <string.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 #include <archive.h>
 #include <archive_entry.h>
@@ -307,27 +309,89 @@ int compress_fullfile_bz (char *fullfiledir, char *fullfileout, char *fullfile)
 
 int copy_dir_with_attr (char *src, char *copydir, char *dest)
 {
-	char *param1;
-	char *param2;
-	int stderrfd;
+	char *tgt;
 	int ret;
+	struct stat sb;
+	ssize_t buflen, keylen, vallen;
+	char *buf, *key, *val;
 
-	string_or_die(&param1, "--exclude=%s/?*", copydir);
-	string_or_die(&param2, "./%s", copydir);
-	char *const tarcfcmd[] = { TAR_COMMAND, "-C", src, TAR_PERM_ATTR_ARGS_STRLIST, "-cf", "-", param1, param2, NULL };
-	char *const tarxfcmd[] = { TAR_COMMAND, "-C", dest, TAR_PERM_ATTR_ARGS_STRLIST, "-xf", "-", NULL };
-
-	stderrfd = open("/dev/null", O_WRONLY);
-	if (stderrfd == -1) {
-		LOG(NULL, "Failed to open /dev/null", "");
-		assert(0);
+	string_or_die(&tgt, "%s/%s", src, copydir);
+	ret = stat(tgt, &sb);
+	if (ret != 0) {
+		printf("Error reading directory attributes from %s\n", tgt);
+		goto error;
 	}
 
-	ret = system_argv_pipe(tarcfcmd, -1, stderrfd, tarxfcmd, -1, stderrfd);
+	ret = mkdir(dest, sb.st_mode);
+	if (ret != 0) {
+		printf("Error making directory %s\n", dest);
+		goto error;
+	}
+	ret = chown(dest, sb.st_uid, sb.st_gid);
+	if (ret != 0) {
+		printf("Error setting permissions of directory %s\n", dest);
+		goto error;
+	}
 
-	free(param1);
-	free(param2);
-	close(stderrfd);
+	// iterate the extended attributes on tgt and apply all those we can
+	// read to dest
+	buflen = listxattr(tgt, NULL, 0);
+	if (buflen == -1) {
+		printf("Error reading directory extended attributes from %s\n", tgt);
+		goto error;
+	}
+	if (buflen != 0) {
+		buf = malloc(buflen);
+		if (buf == NULL) {
+			printf("Failed to allocate memory!\n");
+			goto error;
+		}
+
+		buflen = listxattr(tgt, buf, buflen);
+		if (buflen == -1) {
+			printf("Failed to list extended attributes of %s\n", tgt);
+			free(buf);
+			goto error;
+		}
+
+		key = buf;
+		while (buflen > 0) {
+			vallen = getxattr(tgt, key, NULL, 0);
+			if (vallen == -1) {
+				printf("Failed to read attribute %s of %s\n", key, tgt);
+				goto next;
+			}
+			if (vallen > 0) {
+				val = malloc(vallen + 1);
+				if (val == NULL) {
+					printf("Failed to allocate memory!\n");
+					goto next;
+				}
+				vallen = getxattr(tgt, key, val, vallen);
+				if (vallen == -1) {
+					printf("Failed to get value of attribute %s of %s\n", key, tgt);
+					goto next;
+				}
+				val[vallen] = 0;
+
+				// have key:val -- set them
+				ret = setxattr(dest, key, val, vallen, 0);
+				if (ret == -1) {
+					printf("Failed to set extended attribute (%s:%s) on %s\n", key, val, dest);
+					goto next;
+				}
+			}
+
+		next:
+			keylen = strlen(key) + 1;
+			buflen -= keylen;
+			key += keylen;
+		}
+		free(buf);
+	}
+
+error:
+	free(tgt);
 
 	return ret;
 }
