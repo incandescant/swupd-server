@@ -97,6 +97,7 @@ int inflate_archive (char *inflatepath, char *archivepath, int inflateflags)
 	while (1) {
 		ret = archive_read_next_header(a, &entry);
 		if (ret == ARCHIVE_EOF) {
+			ret = ARCHIVE_OK;
 			break;
 		}
 		if (ret != ARCHIVE_OK) {
