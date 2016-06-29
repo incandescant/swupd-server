@@ -143,7 +143,7 @@ int create_archive(char *archivedir, char *archivename, libarchive_filter_type f
 	size_t len;
 	char buff[8192];
 	char *cwd = NULL;
-	struct archive *a;
+	struct archive *a, *ar;
 	struct archive_entry *entry;
 
 	cwd = getcwd(NULL, 0);
@@ -180,11 +180,12 @@ int create_archive(char *archivedir, char *archivename, libarchive_filter_type f
 		goto fail;
 	}
 
+	ar = archive_read_disk_new();
 	while (*contents) {
 		entry = archive_entry_new();
 		archive_entry_set_pathname(entry, *contents);
 		// TODO: set uid/gid lookup appropriately to preserve numeric uid and gid
-		ret = archive_read_disk_entry_from_file(a, entry, -1, NULL);
+		ret = archive_read_disk_entry_from_file(ar, entry, -1, NULL);
 		if (ret != ARCHIVE_OK) {
 			printf("Failed to read entry info from file(%s): %s\n", *contents, archive_error_string(a));
 			goto next;
@@ -197,7 +198,7 @@ int create_archive(char *archivedir, char *archivename, libarchive_filter_type f
 		}
 		fd = open(*contents, O_RDONLY);
 		if (fd == -1) {
-			printf("Failed to copy contents of %s into archive\n", *contents);
+			printf("Failed to open %s for reading into archive\n", *contents);
 			goto next;
 		}
 		len = read(fd, buff, sizeof(buff));
@@ -210,6 +211,8 @@ int create_archive(char *archivedir, char *archivename, libarchive_filter_type f
 		archive_entry_clear(entry);
 		contents++;
 	}
+	archive_read_close(ar);
+	archive_read_free(ar);
 
 fail:
 	archive_write_close(a);
