@@ -57,11 +57,11 @@ int copy_archive_data(struct archive *ar, struct archive *aw)
 		if (ret == ARCHIVE_EOF) {
 			return ARCHIVE_OK;
 		}
-		if (ret != ARCHIVE_OK) {
+		if (ret < ARCHIVE_OK) {
 			return ret;
 		}
 		ret = archive_write_data_block(aw, buff, size, offset);
-		if (ret != ARCHIVE_OK) {
+		if (ret < ARCHIVE_OK) {
 			printf("Failed to write archive data %s", archive_error_string(aw));
 			return ret;
 		}
